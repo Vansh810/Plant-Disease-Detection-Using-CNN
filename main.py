@@ -9,6 +9,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 
 data_path = 'PlantVillage'
@@ -49,7 +51,7 @@ def preprocess():
 def train_model(X_train, X_test, y_train, y_test):
     try:
         model = load_model('plant_disease_detection_model.h5')
-        with open('history.pkl') as f:
+        with open('training_history.pkl', 'rb') as f:
             history = pickle.load(f)
         print("Loaded Saved Model")
 
@@ -113,8 +115,32 @@ def plot_confusion_matrix(model, X_test, y_test, labels):
     plt.show()
 
 
+def identify_disease(image_path, model):
+    img = cv2.imread(image_path)
+    img = cv2.resize(img, (128, 128))
+    img = img / 255.0
+    img = np.expand_dims(img, axis=0)  # Add batch dimension
+    prediction = model.predict(img)
+    disease_index = np.argmax(prediction)
+    disease_label = disease_labels[disease_index]
+    return disease_label, prediction[0][disease_index]
+
+
+def select_image():
+    Tk().withdraw()  # Close the root window
+    filename = askopenfilename()
+    return filename
+
+
 X_train, X_test, y_train, y_test = preprocess()
 model, history = train_model(X_train, X_test, y_train, y_test)
 evaluate(X_test, y_test)
 plot_history(history)
 plot_confusion_matrix(model, X_test, y_test, disease_labels)
+
+image_path = select_image()
+if image_path:
+    disease_label, confidence = identify_disease(image_path, model)
+    print(f'Plant Status: {disease_label} with confidence: {confidence:.2f}')
+else:
+    print("No file selected.")
